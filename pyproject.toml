@@ -1,0 +1,22 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "ccna"
+version = "0.1.0"
+description = ""
+authors = ["Cedric Anover <cedric.anover@hotmail.com>"]
+readme = "README.md"
+packages = [{include = "ccna", from = "src"}]
+
+# [tool.poetry.scripts]
+# ccna = "ccna.main:main"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+# [tool.poetry.group.dev.dependencies]
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.2"
