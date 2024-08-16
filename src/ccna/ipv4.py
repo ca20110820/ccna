@@ -149,3 +149,25 @@ def get_num_subnets_and_hosts(original_subnet: str, new_subnet_mask: str) -> tup
     num_hosts = 2 ** (32 - new_prefix_len) - 2
     
     return num_subnets, num_hosts
+
+
+def get_subnets(subnet: str, new_subnet_mask: str) -> list[ipaddress.IPv4Network]:
+    """Enumerate all Subnets from the Original Subnet (with CIDR Prefix) and New Subnet Mask.
+
+    Args:
+        subnet (str): Original Subnet (with CIDR Prefix).
+        new_subnet_mask (str): New Subnet Mask.
+
+    Returns:
+        list[ipaddress.IPv4Network]: List of IPv4 Subnets.
+    """
+    # Create an IPv4Network object with the given network address and subnet mask
+    network_obj = ipaddress.IPv4Network(subnet, strict=False)
+    
+    # Calculate the new prefix length from the subnet mask
+    new_prefix_len = ipaddress.IPv4Network(f'0.0.0.0/{new_subnet_mask}').prefixlen
+    
+    # Get the subnets of the network with the new subnet mask
+    subnets = list(network_obj.subnets(new_prefix=new_prefix_len))
+    
+    return subnets
