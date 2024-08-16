@@ -122,3 +122,30 @@ def subnet_mask_address(subnet_num_of_bits: int) -> ipaddress.IPv4Address:
         ipaddress.IPv4Address: Subnet Mask Address
     """
     return ipaddress.IPv4Network(f'0.0.0.0/{subnet_num_of_bits}', strict=False).netmask
+
+
+def get_num_subnets_and_hosts(original_subnet: str, new_subnet_mask: str) -> tuple[int, int]:
+    """Calculate the Number of Subnets and Hosts from Original Subnet (with CIDR Prefix) and New Subnet Mask.
+
+    Args:
+        original_subnet (str): Original Subnet with CIDR Prefix (e.g. "192.168.0.0/24").
+        new_subnet_mask (str): New Subnet Mask (e.g. "255.255.255.128").
+
+    Returns:
+        tuple[int, int]: Number of Subnets and Hosts, respectively.
+    """
+    
+    # Parse the original CIDR
+    original_network = ipaddress.ip_network(original_subnet, strict=False)
+    
+    # Calculate the original prefix length and new prefix length
+    original_prefix_len = original_network.prefixlen
+    new_prefix_len = ipaddress.IPv4Network(f'0.0.0.0/{new_subnet_mask}').prefixlen
+    
+    # Number of subnets
+    num_subnets = 2 ** (new_prefix_len - original_prefix_len)
+    
+    # Number of hosts per subnet
+    num_hosts = 2 ** (32 - new_prefix_len) - 2
+    
+    return num_subnets, num_hosts
