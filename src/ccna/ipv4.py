@@ -229,3 +229,55 @@ def get_subnet_infos(subnet: str, prefix_length: int) -> tuple[ipaddress.IPv4Add
         results.append((bits, str(subnet_mask), num_subnets, num_hosts))
 
     return results
+
+
+def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hosts: list[int]) -> list[dict]:
+    """Finds the Optimal VLSM Subnets of a given IPv4 and Required Number of Hosts of each subnet.
+
+    Args:
+        orig_addr (str): Original IPv4 Address.
+        orig_cidr (int): Original Network's CIDR (e.g. /24).
+        subnet_required_hosts (list[int]): List of Required Number of Hosts for each Subnet.
+
+    Returns:
+        list[dict]: New Subnets with their IP Address and Range Information.
+    """
+    # Sort the `subnet_required_hosts` from largest to smallest (descending).
+    subnet_required_hosts.sort(reverse=True)
+
+    # Convert the original address to an IPv4 network object
+    orig_network = ipaddress.IPv4Network(f'{orig_addr}/{orig_cidr}', strict=False)
+    
+    subnets = []
+    current_base_address = orig_network.network_address
+
+    for hosts in subnet_required_hosts:
+        # Find the "Fulfiller's" Prefix Length
+        required_prefix_length = 32 - (hosts - 1).bit_length()
+        
+        # Calculate the Num of Host Bits (= 32 bits - Fulfiller's Prefix Length)
+        num_host_bits = 32 - required_prefix_length
+        
+        # Calculate the Block Size (= 2 ^ Num of Host Bits)
+        block_size = 2 ** num_host_bits
+
+        # Create the subnet with the current base address and calculated prefix length
+        new_subnet = ipaddress.IPv4Network(f'{current_base_address}/{required_prefix_length}', strict=False)
+
+        # Extract the IP Range from the Subnet's IP Address
+        subnet_info = {
+            "subnet": str(new_subnet.network_address),
+            "prefix_length": required_prefix_length,
+            "network": str(new_subnet),
+            "first_host": str(new_subnet.network_address + 1),
+            "last_host": str(new_subnet.broadcast_address - 1),
+            "broadcast": str(new_subnet.broadcast_address),
+            "total_hosts": new_subnet.num_addresses,
+            "usable_hosts": new_subnet.num_addresses - 2
+        }
+        subnets.append(subnet_info)
+
+        # Update the current base address for the next subnet
+        current_base_address = new_subnet.broadcast_address + 1
+
+    return subnets
