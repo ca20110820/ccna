@@ -177,7 +177,7 @@ def get_subnets(subnet: str, new_subnet_mask: str) -> list[ipaddress.IPv4Network
     return subnets
 
 
-def get_subnet_infos(subnet: str, prefix_length: int) -> tuple[ipaddress.IPv4Address, int, int]:
+def get_subnet_infos(subnet: str, prefix_length: int) -> list[tuple[int, str, int, int]]:
     """
     Calculates and enumerates subnet information based on the number of bits borrowed 
     from the host portion of an IP address.
@@ -195,37 +195,31 @@ def get_subnet_infos(subnet: str, prefix_length: int) -> tuple[ipaddress.IPv4Add
 
     Raises:
         AssertionError: If the subnet contains a '/' character or if the prefix length
-                        is not within the range [1, 32].
-
-    Example:
-        >>> get_subnet_infos('192.168.100.0', 24)
-        [(1, '255.255.255.128', 2, 126),
-         (2, '255.255.255.192', 4, 62),
-         (3, '255.255.255.224', 8, 30),
-         (4, '255.255.255.240', 16, 14),
-         (5, '255.255.255.248', 32, 6),
-         (6, '255.255.255.252', 64, 2)]
+                        is not within the range [1, 30].
     """
     assert "/" not in subnet, "Subnet Address cannot contain '/'"
-    assert 1 <= prefix_length <= 32, "Prefix Length must be in [1, 32]"
+    assert 1 <= prefix_length <= 30, "Prefix Length must be in [1, 30]"
 
-    # Initialize the base network
-    net = ipaddress.IPv4Network(f'{subnet}/{prefix_length}')
+    # Initialize the base network, with strict=False to allow non-network addresses
+    net = ipaddress.IPv4Network(f'{subnet}/{prefix_length}', strict=False)
 
     results = []
 
-    # Loop over the number of bits to borrow (from 1 to 6, because 24+6 = 30)
-    for bits in range(1, (30 - prefix_length) + 1):
+    # Loop over the number of bits to borrow (up to 6 bits)
+    for bits in range(1, min(7, 31 - prefix_length)):
         # Calculate the new prefix length
         new_prefix = net.prefixlen + bits
+        
         # Calculate the subnet mask
         subnet_mask = ipaddress.IPv4Network(f'0.0.0.0/{new_prefix}').netmask
+        
         # Calculate the number of subnets
         num_subnets = 2 ** bits
+        
         # Calculate the number of hosts per subnet
         num_hosts = (2 ** (32 - new_prefix)) - 2
 
-        # Append the result as a tuple (subnet_mask, num_subnets, num_hosts)
+        # Append the result as a tuple (bits, subnet_mask, num_subnets, num_hosts)
         results.append((bits, str(subnet_mask), num_subnets, num_hosts))
 
     return results
@@ -236,7 +230,7 @@ def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hos
 
     Args:
         orig_addr (str): Original IPv4 Address.
-        orig_cidr (int): Original Network's CIDR (e.g. /24).
+        orig_cidr (int): Original Network's CIDR (e.g. 24).
         subnet_required_hosts (list[int]): List of Required Number of Hosts for each Subnet.
 
     Returns:
@@ -252,16 +246,13 @@ def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hos
     current_base_address = orig_network.network_address
 
     for hosts in subnet_required_hosts:
-        # Find the "Fulfiller's" Prefix Length
-        required_prefix_length = 32 - (hosts - 1).bit_length()
+        # Find the required prefix length that accommodates the requested hosts (+2 for network and broadcast)
+        required_prefix_length = 32 - (hosts + 2 - 1).bit_length()
         
-        # Calculate the Num of Host Bits (= 32 bits - Fulfiller's Prefix Length)
-        num_host_bits = 32 - required_prefix_length
-        
-        # Calculate the Block Size (= 2 ^ Num of Host Bits)
-        block_size = 2 ** num_host_bits
+        # Calculate the block size
+        block_size = 2 ** (32 - required_prefix_length)
 
-        # Create the subnet with the current base address and calculated prefix length
+        # Create the subnet with the current base address and the calculated prefix length
         new_subnet = ipaddress.IPv4Network(f'{current_base_address}/{required_prefix_length}', strict=False)
 
         # Extract the IP Range from the Subnet's IP Address
@@ -277,7 +268,11 @@ def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hos
         }
         subnets.append(subnet_info)
 
-        # Update the current base address for the next subnet
+        # Update the current base address for the next subnet, ensuring proper block alignment
         current_base_address = new_subnet.broadcast_address + 1
+
+        # Check if the new base address exceeds the original network's address space
+        if current_base_address > orig_network.broadcast_address:
+            raise ValueError("Insufficient address space to allocate all requested subnets")
 
     return subnets
