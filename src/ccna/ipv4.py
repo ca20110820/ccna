@@ -177,7 +177,7 @@ def get_subnets(subnet: str, new_subnet_mask: str) -> list[ipaddress.IPv4Network
 
 def get_subnet_infos(subnet: str, prefix_length: int) -> list[tuple[int, str, int, int]]:
     """
-    Calculates and enumerates subnet information based on the number of bits borrowed 
+    Calculates and enumerates subnet information based on the number of bits borrowed
     from the host portion of an IP address.
 
     Args:
@@ -247,8 +247,8 @@ def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hos
         # Find the required prefix length that accommodates the requested hosts (+2 for network and broadcast)
         required_prefix_length = 32 - (hosts + 2 - 1).bit_length()
         
-        # Calculate the block size
-        block_size = 2 ** (32 - required_prefix_length)
+        # # Calculate the block size
+        # block_size = 2 ** (32 - required_prefix_length)
 
         # Create the subnet with the current base address and the calculated prefix length
         new_subnet = ipaddress.IPv4Network(f'{current_base_address}/{required_prefix_length}', strict=False)
