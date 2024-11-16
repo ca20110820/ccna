@@ -274,3 +274,26 @@ def get_vlsm_optimal_subnets(orig_addr: str, orig_cidr: int, subnet_required_hos
             raise ValueError("Insufficient address space to allocate all requested subnets")
 
     return subnets
+
+
+def get_hosts_from_subnet(subnet_cidr: str) -> list[str]:
+    """
+    Enumerate the host IP addresses from the given subnet IP address in CIDR Notation.
+
+    Args:
+        subnet_cidr (str): Subnet IP Address in CIDR Notation.
+
+    Returns:
+        List[str]: List of Host IP Addresses that belong to the given subnet.
+    """
+    # Create an IPv4Network object from the subnet CIDR
+    network = ipaddress.IPv4Network(subnet_cidr, strict=False)
+
+    # Special case for /32 subnets, which should return an empty list of hosts
+    if network.prefixlen == 32:
+        return []
+
+    # Generate the list of host IP addresses (excluding network and broadcast addresses)
+    hosts = [str(ip) for ip in network.hosts()]
+
+    return hosts
