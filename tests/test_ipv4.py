@@ -1,5 +1,5 @@
 import pytest
-from ccna.ipv4 import get_vlsm_optimal_subnets, get_subnet_infos
+from ccna.ipv4 import get_vlsm_optimal_subnets, get_subnet_infos, get_hosts_from_subnet
 
 
 def test_valid_subnet_24_prefix():
@@ -152,3 +152,29 @@ def test_single_subnet():
     
     result = get_vlsm_optimal_subnets(orig_addr, orig_cidr, subnet_required_hosts)
     assert result == expected_result
+
+
+def test_get_hosts_from_subnet():
+    # Test 1: /24 Subnet
+    subnet = "192.168.1.0/24"
+    expected_hosts = [f"192.168.1.{i}" for i in range(1, 255)]
+    assert get_hosts_from_subnet(subnet) == expected_hosts
+
+    # Test 2: /30 Subnet (only 2 usable IPs)
+    subnet = "192.168.1.0/30"
+    expected_hosts = ["192.168.1.1", "192.168.1.2"]
+    assert get_hosts_from_subnet(subnet) == expected_hosts
+
+    # Test 3: /29 Subnet (6 usable IPs)
+    subnet = "192.168.1.0/29"
+    expected_hosts = ["192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4", "192.168.1.5", "192.168.1.6"]
+    assert get_hosts_from_subnet(subnet) == expected_hosts
+
+    # Test 4: Invalid CIDR Subnet
+    with pytest.raises(ValueError):
+        get_hosts_from_subnet("invalid-cidr")
+
+    # Test 5: /32 Subnet (no usable hosts)
+    subnet = "192.168.1.1/32"
+    expected_hosts = []
+    assert get_hosts_from_subnet(subnet) == expected_hosts
